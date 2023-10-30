@@ -2,6 +2,7 @@ package com.civitasv.spider.model.bo;
 
 import com.civitasv.spider.model.po.PoiPo;
 import com.civitasv.spider.util.BeanUtils;
+import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import lombok.*;
 import lombok.experimental.Accessors;
@@ -49,7 +50,8 @@ public class POI {
         EMAIL("email", "email", "邮箱", true, false),
         PROVINCE_CODE("provinceCode", "provCode", "省份编码", true, false),
         CITY_CODE("cityCode", "cityCode", "城市编码", true, false),
-        AD_CODE("adCode", "adCode", "区域编码", true, false);
+        AD_CODE("adCode", "adCode", "区域编码", true, false),
+        PHOTOS("photos", "photos", "照片信息", true, true);
         private final String fieldName;
         private final String shapeFieldName; // shp 字段长度有限制
         private final String description;
@@ -95,7 +97,6 @@ public class POI {
         private Object cityName; // 城市名称
         @SerializedName("adname")
         private Object adName; // 区域名称
-
         @SerializedName("postcode")
         private Object postCode; // 邮编，extensions=all时返回
         @SerializedName("website")
@@ -108,6 +109,8 @@ public class POI {
         private Object cityCode; // 城市编码，extensions=all时返回
         @SerializedName("adcode")
         private Object adCode; // 区域编码，extensions=all时返回
+        @SerializedName("photos")
+        private Object photos; // 区域编码，extensions=all时返回
 
         public PoiPo toPoiPo(Long jobId) {
             return PoiPo.builder()
@@ -127,7 +130,9 @@ public class POI {
                     .build();
         }
 
+
         public PoiPo toPoiPoWithExtensions(Long jobId) {
+            Gson gson=new Gson();
             return PoiPo.builder()
                     .id(id)
                     .poiId(BeanUtils.obj2String(poiId))
@@ -148,6 +153,7 @@ public class POI {
                     .provinceCode(BeanUtils.obj2String(provinceCode))
                     .cityCode(BeanUtils.obj2String(cityCode))
                     .adCode(BeanUtils.obj2String(adCode))
+                    .photos(gson.toJson(photos))
                     .build();
         }
     }

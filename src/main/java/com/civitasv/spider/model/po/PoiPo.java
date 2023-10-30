@@ -85,6 +85,9 @@ public class PoiPo implements Serializable {
     @TableField("AD_CODE")
     private String adCode;
 
+    @TableField("PHOTOS")
+    private String photos;
+
     public POI.Info toPoiInfo() {
         return POI.Info.builder()
                 .id(id)
@@ -122,6 +125,7 @@ public class PoiPo implements Serializable {
                 .provinceCode(provinceCode)
                 .cityCode(cityCode)
                 .adCode(adCode)
+                .photos(photos)
                 .build();
     }
 }

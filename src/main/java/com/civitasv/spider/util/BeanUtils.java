@@ -73,6 +73,10 @@ public class BeanUtils {
     }
 
     public static String obj2String(Object obj) {
+        String s = Objects.toString(obj, "");
+        if (s.contains("[]")){
+            return "";
+        }
         return Objects.toString(obj, "");
     }
 }

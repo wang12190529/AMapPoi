@@ -19,25 +19,31 @@ import com.civitasv.spider.service.serviceImpl.TaskServiceImpl;
 import com.civitasv.spider.util.*;
 import com.civitasv.spider.webdao.AMapDao;
 import com.civitasv.spider.webdao.impl.AMapDaoImpl;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import com.opencsv.CSVWriter;
+import com.spatial4j.core.io.GeohashUtils;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import lombok.Builder;
+import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.geotools.data.DataUtilities;
 import org.geotools.feature.SchemaException;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.type.DateUtil;
 import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.json.simple.JSONArray;
 import org.locationtech.jts.geom.*;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -580,7 +586,6 @@ public class POIViewModel {
             poiService.clearTable();
             task.taskStatus(TaskStatus.Preprocessing);
             taskService.updateById(task.toTaskPo());
-
             // 1. 获取所有任务网格的第一页
             appendMessage("划分所有任务网格中");
             List<Job> firstPageJobs;
@@ -638,6 +643,10 @@ public class POIViewModel {
                 break;
             case SHAPEFILE:
                 writeToShp(pois, viewHolder.outputFields);
+                break;
+            case SQLSCRIPT:
+                writeSqlScript(pois, viewHolder.outputFields);
+                break;
         }
         taskService.updateById(task.toTaskPo());
 
@@ -1207,7 +1216,76 @@ public class POIViewModel {
         }
         return result.toArray(new String[0]);
     }
+    private void writeSqlScript(List<POI.Info> res, List<POI.OutputFields> outputFields) {
+        if (!configHolder.hasStart) return;
+        String filename = filename("sql");
+        File sqlFile = FileUtil.getNewFile(filename);
+        if (sqlFile == null) {
+            appendMessage("输出路径有误，请检查后重试！");
+            return;
+        }
+        try (BufferedWriter writer = Files.newBufferedWriter(sqlFile.toPath(), StandardCharsets.UTF_8)) {
+            appendMessage("正在写入数据，请等待");
+            Date date=new Date();
+            SimpleDateFormat sf=new SimpleDateFormat();
+            String format=DateFormatUtils.format(date,"yyyy-MM-dd HH:mm:ss");
+            String type="residential";
+            String scopeId="4501";
+            String scopeName="住宅小区";
+            for (POI.Info item : res) {
+                String[] lnglat = BeanUtils.obj2String(item.location()).split(",");
+                if (null!=item.photos()){
+                    List<Map<String,String>> maps = JacksonUtils.json2List(item.photos().toString(), Map.class);
+                    if (maps.size()>0){
+                        Map<String, String> firstPhoto = maps.get(0);
+                        String logo = firstPhoto.get("url");
+                        writer.write("INSERT INTO service.cube_merchant (MERCHANT_ID,MERCHANT_NAME,OWNER_USER_ID," +
+                                "KEYWORDS,LONGITUDE,LATITUDE,ADDRESS,TELEPHONE,NATION,PROVINCE,CITY,DISTRICT,CREATE_TIME,MERCHANT_TYPE," +
+                                "AUDIT_USER_ID,AUDIT_STATUS,SERVICE_TIME_START,SERVICE_TIME_END,LOCATION_GEO_HASH,logo) " +
+                                "VALUES('"+BeanUtils.obj2String(item.poiId())+"','"+BeanUtils.obj2String(item.name())+"',''," +
+                                "'"+BeanUtils.obj2String(item.type())+"',"+lnglat[0]+","+lnglat[1]+",'"
+                                +BeanUtils.obj2String(item.address())+"','"+BeanUtils.obj2String(item.tel())+"'," +
+                                "'中国','"+BeanUtils.obj2String(item.provinceName())+"','"+BeanUtils.obj2String(item.cityName())+"'" +
+                                ",'"+BeanUtils.obj2String(item.adName())+"','"+format+"','"+type+"','sysinit','1','0000','2400','"+
+                                GeoHashUtil.encodeLatLon(lnglat[1],lnglat[0])+"','"+logo+"');\r\n");
+                        for (Map<String,String> map:maps){
+                            String url = map.get("url");
+                            writer.write("INSERT INTO service.cube_merchant_file (file_id, merchant_id, file_url, file_type, create_time) " +
+                                    "VALUES (REPLACE(UUID(),'-',''), '"+BeanUtils.obj2String(item.poiId())+"', '"+url+"', '0', '"+format+"');\r\n");
+                        }
+                    }else{
+                        writer.write("INSERT INTO service.cube_merchant (MERCHANT_ID,MERCHANT_NAME,OWNER_USER_ID," +
+                                "KEYWORDS,LONGITUDE,LATITUDE,ADDRESS,TELEPHONE,NATION,PROVINCE,CITY,DISTRICT,CREATE_TIME,MERCHANT_TYPE," +
+                                "AUDIT_USER_ID,AUDIT_STATUS,SERVICE_TIME_START,SERVICE_TIME_END,LOCATION_GEO_HASH) " +
+                                "VALUES('"+BeanUtils.obj2String(item.poiId())+"','"+BeanUtils.obj2String(item.name())+"',''," +
+                                "'"+BeanUtils.obj2String(item.type())+"',"+lnglat[0]+","+lnglat[1]+",'"
+                                +BeanUtils.obj2String(item.address())+"','"+BeanUtils.obj2String(item.tel())+"'," +
+                                "'中国','"+BeanUtils.obj2String(item.provinceName())+"','"+BeanUtils.obj2String(item.cityName())+"'" +
+                                ",'"+BeanUtils.obj2String(item.adName())+"','"+format+"','"+type+"','sysinit','1','00:00','24:00','"+
+                                GeoHashUtil.encodeLatLon(lnglat[1],lnglat[0])+"');\r\n");
+                    }
+                }else{
+                    writer.write("INSERT INTO service.cube_merchant (MERCHANT_ID,MERCHANT_NAME,OWNER_USER_ID," +
+                            "KEYWORDS,LONGITUDE,LATITUDE,ADDRESS,TELEPHONE,NATION,PROVINCE,CITY,DISTRICT,CREATE_TIME,MERCHANT_TYPE," +
+                            "AUDIT_USER_ID,AUDIT_STATUS,SERVICE_TIME_START,SERVICE_TIME_END,LOCATION_GEO_HASH) " +
+                            "VALUES('"+BeanUtils.obj2String(item.poiId())+"','"+BeanUtils.obj2String(item.name())+"',''," +
+                            "'"+BeanUtils.obj2String(item.type())+"',"+lnglat[0]+","+lnglat[1]+",'"
+                            +BeanUtils.obj2String(item.address())+"','"+BeanUtils.obj2String(item.tel())+"'," +
+                            "'中国','"+BeanUtils.obj2String(item.provinceName())+"','"+BeanUtils.obj2String(item.cityName())+"'" +
+                            ",'"+BeanUtils.obj2String(item.adName())+"','"+format+"','"+type+"','sysinit','1','0000','2400','"+
+                            GeoHashUtil.encodeLatLon(lnglat[1],lnglat[0])+"');\r\n");
+                }
+                writer.write("INSERT INTO service.cube_merchant_service_scope (id, scope_id, scope_name, ordinal, merchant_id) " +
+                        "VALUES (REPLACE(UUID(),'-',''), '"+scopeId+"', '"+scopeName+"', 99, '"+BeanUtils.obj2String(item.poiId())+"');\r\n");
 
+            }
+            appendMessage("写入成功，结果存储于" + sqlFile.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+            appendMessage("写入失败");
+            appendMessage(e.getMessage());
+        }
+    }
     private void writeToCsv(List<POI.Info> res, List<POI.OutputFields> outputFields) {
         if (!configHolder.hasStart) return;
         String filename = filename("csv");

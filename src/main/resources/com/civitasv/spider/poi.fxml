@@ -26,7 +26,8 @@
         <VBox styleClass="main">
             <Label text="高德key（不同key之间以英文逗号分割）："/>
             <TextArea fx:id="keys" minHeight="-Infinity" minWidth="-Infinity" prefHeight="100.0" prefWidth="500.0"
-                      promptText="可以同时使用多个key，示例：175b18***~***55b943,99c4db***~***f4c993,..."/>
+                       text="50cfe5f45ae5052d520923a6df36da6d">
+            </TextArea>
             <HBox alignment="CENTER_LEFT" prefHeight="44.0" prefWidth="345.0">
                 <padding>
                     <Insets bottom="10.0" top="10.0"/>

@@ -135,7 +135,8 @@ public class POIController extends BaseController {
                 Arrays.asList(
                         OutputType.CSV,
                         OutputType.GEOJSON,
-                        OutputType.SHAPEFILE)
+                        OutputType.SHAPEFILE,
+                        OutputType.SQLSCRIPT)
         ));
 
         // 设置坐标类型

@@ -2,6 +2,7 @@ package com.civitasv.spider.api;
 
 import com.civitasv.spider.api.service.AMapService;
 import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -22,12 +23,15 @@ public class RetrofitAMapClient {
     }
 
     private RetrofitAMapClient() {
+        HttpLoggingInterceptor loggingInterceptor=new HttpLoggingInterceptor();
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
         OkHttpClient okHttpClient = new OkHttpClient().newBuilder()
                 .connectTimeout(1, TimeUnit.DAYS)
                 .readTimeout(1, TimeUnit.DAYS)
                 .writeTimeout(1, TimeUnit.DAYS)
                 .retryOnConnectionFailure(false)
                 .callTimeout(1, TimeUnit.DAYS)
+                .addInterceptor(loggingInterceptor)
                 .build();
         retrofit = new Retrofit.Builder()
                 .addConverterFactory(GsonConverterFactory.create())
